@@ -21,6 +21,8 @@ def _worker(remote, parent_remote, env_fn_wrapper):
                     info['terminal_observation'] = observation
                     observation = env.reset()
                 remote.send((observation, reward, done, info))
+            elif cmd == 'seed':
+                remote.send(env.seed(data))
             elif cmd == 'reset':
                 observation = env.reset()
                 remote.send(observation)
