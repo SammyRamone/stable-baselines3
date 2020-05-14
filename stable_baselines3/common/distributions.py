@@ -1,6 +1,7 @@
 from typing import Optional, Tuple, Dict, Any
 
 import gym
+import numpy as np
 import torch as th
 import torch.nn as nn
 from torch.distributions import Normal, Categorical
@@ -179,6 +180,28 @@ class DiagGaussianDistribution(Distribution):
         """
         log_prob = self.distribution.log_prob(actions)
         return sum_independent_dims(log_prob)
+
+
+class FixedVarDiagGaussianDistribution(DiagGaussianDistribution):
+    def __init__(self, action_dim: int):
+        super(FixedVarDiagGaussianDistribution, self).__init__(action_dim)
+
+    def proba_distribution_net(self, latent_dim: int,
+                               log_std_init: float = -1) -> Tuple[nn.Module, nn.Parameter]:
+        """
+        Create the layers and parameter that represent the distribution:
+        one output will be the mean of the Gaussian, the other parameter will be the
+        standard deviation (log std in fact to allow negative values).
+        The stadard deviation will be fixed to inital value.
+
+        :param latent_dim: (int) Dimension og the last layer of the policy (before the action layer)
+        :param log_std_init: (float) Initial value for the log standard deviation
+        :return: (nn.Linear, nn.Parameter)
+        """
+        mean_actions = nn.Linear(latent_dim, self.action_dim)
+        # TODO: allow action dependent std
+        log_std = nn.Parameter(th.ones(self.action_dim) * log_std_init, requires_grad=False)
+        return mean_actions, log_std
 
 
 class SquashedDiagGaussianDistribution(DiagGaussianDistribution):
@@ -546,8 +569,9 @@ def make_proba_distribution(action_space: gym.spaces.Space,
         assert len(action_space.shape) == 1, "Error: the action space must be a vector"
         if use_sde:
             return StateDependentNoiseDistribution(get_action_dim(action_space), **dist_kwargs)
-        #return SquashedDiagGaussianDistribution(get_action_dim(action_space))
-        return DiagGaussianDistribution(get_action_dim(action_space), **dist_kwargs)
+        # return SquashedDiagGaussianDistribution(get_action_dim(action_space), **dist_kwargs)
+        return FixedVarDiagGaussianDistribution(get_action_dim(action_space), **dist_kwargs)
+        #return DiagGaussianDistribution(get_action_dim(action_space), **dist_kwargs)
     elif isinstance(action_space, spaces.Discrete):
         return CategoricalDistribution(action_space.n, **dist_kwargs)
     # elif isinstance(action_space, spaces.MultiDiscrete):
