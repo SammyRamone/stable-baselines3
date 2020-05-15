@@ -570,8 +570,8 @@ def make_proba_distribution(action_space: gym.spaces.Space,
         if use_sde:
             return StateDependentNoiseDistribution(get_action_dim(action_space), **dist_kwargs)
         # return SquashedDiagGaussianDistribution(get_action_dim(action_space), **dist_kwargs)
-        return FixedVarDiagGaussianDistribution(get_action_dim(action_space), **dist_kwargs)
-        #return DiagGaussianDistribution(get_action_dim(action_space), **dist_kwargs)
+        #return FixedVarDiagGaussianDistribution(get_action_dim(action_space), **dist_kwargs)
+        return DiagGaussianDistribution(get_action_dim(action_space), **dist_kwargs)
     elif isinstance(action_space, spaces.Discrete):
         return CategoricalDistribution(action_space.n, **dist_kwargs)
     # elif isinstance(action_space, spaces.MultiDiscrete):
