@@ -56,6 +56,7 @@ class PPOPolicy(BasePolicy):
                  device: Union[th.device, str] = 'auto',
                  activation_fn: Type[nn.Module] = nn.Tanh,
                  ortho_init: bool = True,
+                 init_bias_pi: th.tensor = None,
                  use_sde: bool = False,
                  log_std_init: float = 0.0,
                  full_std: bool = True,
@@ -99,6 +100,7 @@ class PPOPolicy(BasePolicy):
 
         self.normalize_images = normalize_images
         self.log_std_init = log_std_init
+        self.init_bias_pi = init_bias_pi
         dist_kwargs = None
         # Keyword arguments for SDE distribution
         if use_sde:
@@ -194,6 +196,9 @@ class PPOPolicy(BasePolicy):
                     self.value_net: 1
                 }[module]
                 module.apply(partial(self.init_weights, gain=gain))
+        # set init bias after everything else so that it does not get overwritten
+        if self.init_bias_pi is not None:
+            self.action_net.bias.data = self.init_bias_pi
         # Setup optimizer with initial learning rate
         self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)
 

@@ -96,7 +96,8 @@ class PPO(BaseRLModel):
                  verbose: int = 0,
                  seed: Optional[int] = None,
                  device: Union[th.device, str] = 'auto',
-                 _init_setup_model: bool = True):
+                 _init_setup_model: bool = True,
+                 use_init_bias: bool = False):
 
         super(PPO, self).__init__(policy, env, PPOPolicy, learning_rate, policy_kwargs=policy_kwargs,
                                   verbose=verbose, device=device, use_sde=use_sde, sde_sample_freq=sde_sample_freq,
@@ -116,6 +117,9 @@ class PPO(BaseRLModel):
         self.target_kl = target_kl
         self.tensorboard_log = tensorboard_log
         self.tb_writer = None
+        self.init_bias_pi = None
+        if use_init_bias:
+            self.init_bias_pi = th.tensor(env.get_attr('robot')[0].get_init_bias())
 
         if _init_setup_model:
             self._setup_model()
@@ -130,6 +134,7 @@ class PPO(BaseRLModel):
                                             n_envs=self.n_envs)
         self.policy = self.policy_class(self.observation_space, self.action_space,
                                         self.lr_schedule, use_sde=self.use_sde, device=self.device,
+                                        init_bias_pi=self.init_bias_pi,
                                         **self.policy_kwargs)
         self.policy = self.policy.to(self.device)
 
