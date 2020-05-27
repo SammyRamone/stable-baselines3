@@ -85,7 +85,7 @@ def plot_curves(xy_list: List[Tuple[np.ndarray, np.ndarray]],
     max_x = max(xy[0][-1] for xy in xy_list)
     min_x = 0
     for (i, (x, y)) in enumerate(xy_list):
-        plt.scatter(x, y, s=2)
+        plt.scatter(x, y, s=2, alpha=1/len(xy_list))
         # Do not plot the smoothed curve at all if the timeseries is shorter than window size.
         if x.shape[0] >= EPISODES_WINDOW:
             # Compute and plot rolling mean with window of size EPISODE_WINDOW
