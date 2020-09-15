@@ -505,6 +505,11 @@ class Logger(object):
         if self.level <= level:
             self._do_log(args)
 
+    def log_graph(self, net): -> None:
+        for _format in self.output_formats:
+            if isinstance(_format, TensorBoardOutputFormat):
+                _format.writer.add_graph(net)
+
     # Configuration
     # ----------------------------------------
     def set_level(self, level: int) -> None:
