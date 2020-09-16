@@ -28,7 +28,6 @@ from stable_baselines3.common.utils import (
 )
 from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv, VecNormalize, VecTransposeImage, unwrap_vec_normalize
 
-
 def maybe_make_env(env: Union[GymEnv, str, None], monitor_wrapper: bool, verbose: int) -> Optional[GymEnv]:
     """If env is a string, make the environment; otherwise, return env.
 
@@ -490,6 +489,7 @@ class BaseAlgorithm(ABC):
 
         # Create eval callback if needed
         callback = self._init_callback(callback, eval_env, eval_freq, n_eval_episodes, log_path)
+        logger.log_graph(self.policy, th.from_numpy(self.observation_space.sample()).type(th.cuda.FloatTensor).unsqueeze(0))
 
         return total_timesteps, callback
 
@@ -572,3 +572,4 @@ class BaseAlgorithm(ABC):
             params_to_save[name] = attr.state_dict()
 
         save_to_zip_file(path, data=data, params=params_to_save, tensors=tensors)
+

@@ -345,8 +345,8 @@ def log(*args, level: int = INFO) -> None:
     """
     Logger.CURRENT.log(*args, level=level)
 
-def log_graph(net) -> None:
-    Logger.CURRENT.log_graph(net)
+def log_graph(net, sample) -> None:
+    Logger.CURRENT.log_graph(net, sample)
 
 
 def debug(*args) -> None:
@@ -508,10 +508,11 @@ class Logger(object):
         if self.level <= level:
             self._do_log(args)
 
-    def log_graph(self, net) -> None:
+    def log_graph(self, net, sample) -> None:
         for _format in self.output_formats:
             if isinstance(_format, TensorBoardOutputFormat):
-                _format.writer.add_graph(net)
+                _format.writer.add_graph(net, input_to_model=sample, verbose=False)
+                _format.writer.flush()
 
     # Configuration
     # ----------------------------------------
@@ -645,3 +646,4 @@ def read_csv(filename: str) -> pandas.DataFrame:
     :return: (pandas.DataFrame) the data in the csv
     """
     return pandas.read_csv(filename, index_col=None, comment="#")
+
