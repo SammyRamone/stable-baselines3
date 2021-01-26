@@ -15,7 +15,7 @@ To build a custom callback, you need to create a class that derives from ``BaseC
 This will give you access to events (``_on_training_start``, ``_on_step``) and useful variables (like `self.model` for the RL model).
 
 
-.. You can find two examples of custom callbacks in the documentation: one for saving the best model according to the training reward (see :ref:`Examples <examples>`), and one for logging additional values with Tensorboard (see :ref:`Tensorboard section <tensorboard>`).
+You can find two examples of custom callbacks in the documentation: one for saving the best model according to the training reward (see :ref:`Examples <examples>`), and one for logging additional values with Tensorboard (see :ref:`Tensorboard section <tensorboard>`).
 
 
 .. code-block:: python
@@ -34,7 +34,7 @@ This will give you access to events (``_on_training_start``, ``_on_step``) and u
             # Those variables will be accessible in the callback
             # (they are defined in the base class)
             # The RL model
-            # self.model = None  # type: BaseRLModel
+            # self.model = None  # type: BaseAlgorithm
             # An alias for self.model.get_env(), the environment used for training
             # self.training_env = None  # type: Union[gym.Env, VecEnv, None]
             # Number of time the callback was called
@@ -44,7 +44,7 @@ This will give you access to events (``_on_training_start``, ``_on_step``) and u
             # self.locals = None  # type: Dict[str, Any]
             # self.globals = None  # type: Dict[str, Any]
             # The logger object, used to report things in the terminal
-            # self.logger = None  # type: logger.Logger
+            # self.logger = None  # stable_baselines3.common.logger
             # # Sometimes, for event callback, it is useful
             # # to have access to the parent object
             # self.parent = None  # type: Optional[BaseCallback]
@@ -290,6 +290,36 @@ An :ref:`EventCallback` that will trigger its child callback every ``n_steps`` t
   model = PPO('MlpPolicy', 'Pendulum-v0', verbose=1)
 
   model.learn(int(2e4), callback=event_callback)
+
+
+.. _StopTrainingOnMaxEpisodes:
+
+StopTrainingOnMaxEpisodes
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Stop the training upon reaching the maximum number of episodes, regardless of the model's ``total_timesteps`` value.
+Also, presumes that, for multiple environments, the desired behavior is that the agent trains on each env for ``max_episodes``
+and in total for ``max_episodes * n_envs`` episodes.
+
+
+.. note::
+    For multiple environments, the agent will train for a total of ``max_episodes * n_envs`` episodes.
+    However, it can't be guaranteed that this training will occur for an exact number of ``max_episodes`` per environment.
+    Thus, there is an assumption that, on average, each environment ran for ``max_episodes``.
+
+
+.. code-block:: python
+
+    from stable_baselines3 import A2C
+    from stable_baselines3.common.callbacks import StopTrainingOnMaxEpisodes
+
+    # Stops training when the model reaches the maximum number of episodes
+    callback_max_episodes = StopTrainingOnMaxEpisodes(max_episodes=5, verbose=1)
+
+    model = A2C('MlpPolicy', 'Pendulum-v0', verbose=1)
+    # Almost infinite number of timesteps, but the training will stop
+    # early as soon as the max number of episodes is reached
+    model.learn(int(1e10), callback=callback_max_episodes)
 
 
 .. automodule:: stable_baselines3.common.callbacks

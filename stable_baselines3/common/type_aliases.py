@@ -1,22 +1,22 @@
-"""
-Common aliases for type hint
-"""
-from typing import Union, Dict, Any, NamedTuple, List, Callable, Tuple
+"""Common aliases for type hints"""
 
+from typing import Any, Callable, Dict, List, NamedTuple, Tuple, Union
+
+import gym
 import numpy as np
 import torch as th
-import gym
 
-from stable_baselines3.common.vec_env import VecEnv
-from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common import callbacks, vec_env
 
-
-GymEnv = Union[gym.Env, VecEnv]
+GymEnv = Union[gym.Env, vec_env.VecEnv]
 GymObs = Union[Tuple, Dict[str, Any], np.ndarray, int]
 GymStepReturn = Tuple[GymObs, float, bool, Dict]
 TensorDict = Dict[str, th.Tensor]
 OptimizerStateDict = Dict[str, Any]
-MaybeCallback = Union[None, Callable, List[BaseCallback], BaseCallback]
+MaybeCallback = Union[None, Callable, List[callbacks.BaseCallback], callbacks.BaseCallback]
+# A schedule takes the remaining progress as input
+# and ouputs a scalar (e.g. learning rate, clip range, ...)
+Schedule = Callable[[float], float]
 
 
 class RolloutBufferSamples(NamedTuple):

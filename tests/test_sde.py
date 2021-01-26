@@ -2,7 +2,7 @@ import pytest
 import torch as th
 from torch.distributions import Normal
 
-from stable_baselines3 import A2C, SAC, PPO
+from stable_baselines3 import A2C, PPO, SAC
 
 
 def test_state_dependent_exploration_grad():
@@ -54,10 +54,25 @@ def test_state_dependent_exploration_grad():
     assert sigma_hat.grad.allclose(grad)
 
 
+def test_sde_check():
+    with pytest.raises(ValueError):
+        PPO("MlpPolicy", "CartPole-v1", use_sde=True)
+
+
 @pytest.mark.parametrize("model_class", [SAC, A2C, PPO])
 @pytest.mark.parametrize("sde_net_arch", [None, [32, 16], []])
 @pytest.mark.parametrize("use_expln", [False, True])
 def test_state_dependent_offpolicy_noise(model_class, sde_net_arch, use_expln):
-    model = model_class('MlpPolicy', 'Pendulum-v0', use_sde=True, seed=None, create_eval_env=True,
-                        verbose=1, policy_kwargs=dict(log_std_init=-2, sde_net_arch=sde_net_arch, use_expln=use_expln))
-    model.learn(total_timesteps=int(500), eval_freq=250)
+    model = model_class(
+        "MlpPolicy",
+        "Pendulum-v0",
+        use_sde=True,
+        seed=None,
+        create_eval_env=True,
+        verbose=1,
+        policy_kwargs=dict(log_std_init=-2, sde_net_arch=sde_net_arch, use_expln=use_expln, net_arch=[64]),
+    )
+    model.learn(total_timesteps=int(300), eval_freq=250)
+    model.policy.reset_noise()
+    if model_class == SAC:
+        model.policy.actor.get_std()

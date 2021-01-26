@@ -1,16 +1,17 @@
+from typing import Any, Dict, Optional, Type, Union
+
 import torch as th
-import torch.nn.functional as F
 from gym import spaces
-from typing import Type, Union, Callable, Optional, Dict, Any
+from torch.nn import functional as F
 
 from stable_baselines3.common import logger
-from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback
+from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
+from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
 from stable_baselines3.common.utils import explained_variance
-from stable_baselines3.ppo.policies import PPOPolicy
-from stable_baselines3.ppo.ppo import PPO
 
 
-class A2C(PPO):
+class A2C(OnPolicyAlgorithm):
     """
     Advantage Actor Critic (A2C)
 
@@ -20,84 +21,109 @@ class A2C(PPO):
 
     Introduction to A2C: https://hackernoon.com/intuitive-rl-intro-to-advantage-actor-critic-a2c-4ff545978752
 
-    :param policy: (PPOPolicy or str) The policy model to use (MlpPolicy, CnnPolicy, ...)
-    :param env: (Gym environment or str) The environment to learn from (if registered in Gym, can be str)
-    :param learning_rate: (float or callable) The learning rate, it can be a function
-    :param n_steps: (int) The number of steps to run for each environment per update
+    :param policy: The policy model to use (MlpPolicy, CnnPolicy, ...)
+    :param env: The environment to learn from (if registered in Gym, can be str)
+    :param learning_rate: The learning rate, it can be a function
+        of the current progress remaining (from 1 to 0)
+    :param n_steps: The number of steps to run for each environment per update
         (i.e. batch size is n_steps * n_env where n_env is number of environment copies running in parallel)
-    :param gamma: (float) Discount factor
-    :param gae_lambda: (float) Factor for trade-off of bias vs variance for Generalized Advantage Estimator
+    :param gamma: Discount factor
+    :param gae_lambda: Factor for trade-off of bias vs variance for Generalized Advantage Estimator
         Equivalent to classic advantage when set to 1.
-    :param ent_coef: (float) Entropy coefficient for the loss calculation
-    :param vf_coef: (float) Value function coefficient for the loss calculation
-    :param max_grad_norm: (float) The maximum value for the gradient clipping
-    :param rms_prop_eps: (float) RMSProp epsilon. It stabilizes square root computation in denominator
+    :param ent_coef: Entropy coefficient for the loss calculation
+    :param vf_coef: Value function coefficient for the loss calculation
+    :param max_grad_norm: The maximum value for the gradient clipping
+    :param rms_prop_eps: RMSProp epsilon. It stabilizes square root computation in denominator
         of RMSProp update
-    :param use_rms_prop: (bool) Whether to use RMSprop (default) or Adam as optimizer
-    :param use_sde: (bool) Whether to use State Dependent Exploration (SDE)
+    :param use_rms_prop: Whether to use RMSprop (default) or Adam as optimizer
+    :param use_sde: Whether to use generalized State Dependent Exploration (gSDE)
         instead of action noise exploration (default: False)
-    :param sde_sample_freq: (int) Sample a new noise matrix every n steps when using SDE
+    :param sde_sample_freq: Sample a new noise matrix every n steps when using gSDE
         Default: -1 (only sample at the beginning of the rollout)
-    :param normalize_advantage: (bool) Whether to normalize or not the advantage
-    :param tensorboard_log: (str) the log location for tensorboard (if None, no logging)
-    :param create_eval_env: (bool) Whether to create a second environment that will be
+    :param normalize_advantage: Whether to normalize or not the advantage
+    :param tensorboard_log: the log location for tensorboard (if None, no logging)
+    :param create_eval_env: Whether to create a second environment that will be
         used for evaluating the agent periodically. (Only available when passing string for the environment)
-    :param policy_kwargs: (dict) additional arguments to be passed to the policy on creation
-    :param verbose: (int) the verbosity level: 0 no output, 1 info, 2 debug
-    :param seed: (int) Seed for the pseudo random generators
-    :param device: (str or th.device) Device (cpu, cuda, ...) on which the code should be run.
+    :param policy_kwargs: additional arguments to be passed to the policy on creation
+    :param verbose: the verbosity level: 0 no output, 1 info, 2 debug
+    :param seed: Seed for the pseudo random generators
+    :param device: Device (cpu, cuda, ...) on which the code should be run.
         Setting it to auto, the code will be run on the GPU if possible.
-    :param _init_setup_model: (bool) Whether or not to build the network at the creation of the instance
+    :param _init_setup_model: Whether or not to build the network at the creation of the instance
     """
-    def __init__(self, policy: Union[str, Type[PPOPolicy]],
-                 env: Union[GymEnv, str],
-                 learning_rate: Union[float, Callable] = 7e-4,
-                 n_steps: int = 5,
-                 gamma: float = 0.99,
-                 gae_lambda: float = 1.0,
-                 ent_coef: float = 0.0,
-                 vf_coef: float = 0.5,
-                 max_grad_norm: float = 0.5,
-                 rms_prop_eps: float = 1e-5,
-                 use_rms_prop: bool = True,
-                 use_sde: bool = False,
-                 sde_sample_freq: int = -1,
-                 normalize_advantage: bool = False,
-                 tensorboard_log: Optional[str] = None,
-                 create_eval_env: bool = False,
-                 policy_kwargs: Optional[Dict[str, Any]] = None,
-                 verbose: int = 0,
-                 seed: Optional[int] = None,
-                 device: Union[th.device, str] = 'auto',
-                 _init_setup_model: bool = True):
 
-        super(A2C, self).__init__(policy, env, learning_rate=learning_rate,
-                                  n_steps=n_steps, batch_size=None, n_epochs=1,
-                                  gamma=gamma, gae_lambda=gae_lambda, ent_coef=ent_coef,
-                                  vf_coef=vf_coef, max_grad_norm=max_grad_norm,
-                                  use_sde=use_sde, sde_sample_freq=sde_sample_freq,
-                                  tensorboard_log=tensorboard_log, policy_kwargs=policy_kwargs,
-                                  verbose=verbose, device=device, create_eval_env=create_eval_env,
-                                  seed=seed, _init_setup_model=False)
+    def __init__(
+        self,
+        policy: Union[str, Type[ActorCriticPolicy]],
+        env: Union[GymEnv, str],
+        learning_rate: Union[float, Schedule] = 7e-4,
+        n_steps: int = 5,
+        gamma: float = 0.99,
+        gae_lambda: float = 1.0,
+        ent_coef: float = 0.0,
+        vf_coef: float = 0.5,
+        max_grad_norm: float = 0.5,
+        rms_prop_eps: float = 1e-5,
+        use_rms_prop: bool = True,
+        use_sde: bool = False,
+        sde_sample_freq: int = -1,
+        normalize_advantage: bool = False,
+        tensorboard_log: Optional[str] = None,
+        create_eval_env: bool = False,
+        policy_kwargs: Optional[Dict[str, Any]] = None,
+        verbose: int = 0,
+        seed: Optional[int] = None,
+        device: Union[th.device, str] = "auto",
+        _init_setup_model: bool = True,
+    ):
+
+        super(A2C, self).__init__(
+            policy,
+            env,
+            learning_rate=learning_rate,
+            n_steps=n_steps,
+            gamma=gamma,
+            gae_lambda=gae_lambda,
+            ent_coef=ent_coef,
+            vf_coef=vf_coef,
+            max_grad_norm=max_grad_norm,
+            use_sde=use_sde,
+            sde_sample_freq=sde_sample_freq,
+            tensorboard_log=tensorboard_log,
+            policy_kwargs=policy_kwargs,
+            verbose=verbose,
+            device=device,
+            create_eval_env=create_eval_env,
+            seed=seed,
+            _init_setup_model=False,
+            supported_action_spaces=(
+                spaces.Box,
+                spaces.Discrete,
+                spaces.MultiDiscrete,
+                spaces.MultiBinary,
+            ),
+        )
 
         self.normalize_advantage = normalize_advantage
-        # Override PPO optimizer to match original implementation
-        if use_rms_prop and 'optimizer_class' not in self.policy_kwargs:
-            self.policy_kwargs['optimizer_class'] = th.optim.RMSprop
-            self.policy_kwargs['optimizer_kwargs'] = dict(alpha=0.99, eps=rms_prop_eps,
-                                                          weight_decay=0)
+
+        # Update optimizer inside the policy if we want to use RMSProp
+        # (original implementation) rather than Adam
+        if use_rms_prop and "optimizer_class" not in self.policy_kwargs:
+            self.policy_kwargs["optimizer_class"] = th.optim.RMSprop
+            self.policy_kwargs["optimizer_kwargs"] = dict(alpha=0.99, eps=rms_prop_eps, weight_decay=0)
 
         if _init_setup_model:
             self._setup_model()
 
-    def train(self, gradient_steps: int, batch_size: Optional[int] = None) -> None:
+    def train(self) -> None:
+        """
+        Update policy using the currently gathered
+        rollout buffer (one gradient step over whole data).
+        """
         # Update optimizer learning rate
         self._update_learning_rate(self.policy.optimizer)
-        # A2C with gradient_steps > 1 does not make sense
-        assert gradient_steps == 1, "A2C does not support multiple gradient steps"
-        # We do not use minibatches for A2C
-        assert batch_size is None, "A2C does not support minibatch"
 
+        # This will only loop once (get all data in one go)
         for rollout_data in self.rollout_buffer.get(batch_size=None):
 
             actions = rollout_data.actions
@@ -123,7 +149,7 @@ class A2C(PPO):
             # Entropy loss favor exploration
             if entropy is None:
                 # Approximate entropy when no analytical form
-                entropy_loss = -log_prob.mean()
+                entropy_loss = -th.mean(-log_prob)
             else:
                 entropy_loss = -th.mean(entropy)
 
@@ -137,30 +163,38 @@ class A2C(PPO):
             th.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
             self.policy.optimizer.step()
 
-        explained_var = explained_variance(self.rollout_buffer.returns.flatten(),
-                                           self.rollout_buffer.values.flatten())
+        explained_var = explained_variance(self.rollout_buffer.values.flatten(), self.rollout_buffer.returns.flatten())
 
         self._n_updates += 1
-        logger.logkv("n_updates", self._n_updates)
-        logger.logkv("explained_variance", explained_var)
-        logger.logkv("entropy_loss", entropy_loss.item())
-        logger.logkv("policy_loss", policy_loss.item())
-        logger.logkv("value_loss", value_loss.item())
-        if hasattr(self.policy, 'log_std'):
-            logger.logkv("std", th.exp(self.policy.log_std).mean().item())
+        logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
+        logger.record("train/explained_variance", explained_var)
+        logger.record("train/entropy_loss", entropy_loss.item())
+        logger.record("train/policy_loss", policy_loss.item())
+        logger.record("train/value_loss", value_loss.item())
+        if hasattr(self.policy, "log_std"):
+            logger.record("train/std", th.exp(self.policy.log_std).mean().item())
 
-    def learn(self,
-              total_timesteps: int,
-              callback: MaybeCallback = None,
-              log_interval: int = 100,
-              eval_env: Optional[GymEnv] = None,
-              eval_freq: int = -1,
-              n_eval_episodes: int = 5,
-              tb_log_name: str = "A2C",
-              eval_log_path: Optional[str] = None,
-              reset_num_timesteps: bool = True) -> 'A2C':
+    def learn(
+        self,
+        total_timesteps: int,
+        callback: MaybeCallback = None,
+        log_interval: int = 100,
+        eval_env: Optional[GymEnv] = None,
+        eval_freq: int = -1,
+        n_eval_episodes: int = 5,
+        tb_log_name: str = "A2C",
+        eval_log_path: Optional[str] = None,
+        reset_num_timesteps: bool = True,
+    ) -> "A2C":
 
-        return super(A2C, self).learn(total_timesteps=total_timesteps, callback=callback, log_interval=log_interval,
-                                      eval_env=eval_env, eval_freq=eval_freq, n_eval_episodes=n_eval_episodes,
-                                      tb_log_name=tb_log_name, eval_log_path=eval_log_path,
-                                      reset_num_timesteps=reset_num_timesteps)
+        return super(A2C, self).learn(
+            total_timesteps=total_timesteps,
+            callback=callback,
+            log_interval=log_interval,
+            eval_env=eval_env,
+            eval_freq=eval_freq,
+            n_eval_episodes=n_eval_episodes,
+            tb_log_name=tb_log_name,
+            eval_log_path=eval_log_path,
+            reset_num_timesteps=reset_num_timesteps,
+        )

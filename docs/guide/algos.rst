@@ -5,14 +5,17 @@ This table displays the rl algorithms that are implemented in the Stable Baselin
 along with some useful characteristics: support for discrete/continuous actions, multiprocessing.
 
 
-============ =========== ============ ================
-Name         ``Box``     ``Discrete`` Multi Processing
-============ =========== ============ ================
-A2C          ✔️           ✔️            ✔️
-PPO          ✔️           ✔️            ✔️
-SAC          ✔️          ❌            ❌
-TD3          ✔️          ❌            ❌
-============ =========== ============ ================
+============ =========== ============ ================= =============== ================
+Name         ``Box``     ``Discrete`` ``MultiDiscrete`` ``MultiBinary`` Multi Processing
+============ =========== ============ ================= =============== ================
+A2C          ✔️           ✔️            ✔️                 ✔️               ✔️
+DDPG         ✔️          ❌            ❌                ❌              ❌
+DQN          ❌           ✔️           ❌                ❌              ❌
+HER          ✔️            ✔️           ❌                ❌              ❌
+PPO          ✔️           ✔️            ✔️                 ✔️               ✔️
+SAC          ✔️          ❌            ❌                ❌              ❌
+TD3          ✔️          ❌            ❌                ❌              ❌
+============ =========== ============ ================= =============== ================
 
 
 .. note::
@@ -27,6 +30,10 @@ Actions ``gym.spaces``:
 -  ``MultiDiscrete``: A list of possible actions, where each timestep only one action of each discrete set can be used.
 - ``MultiBinary``: A list of possible actions, where each timestep any of the actions can be used in any combination.
 
+
+.. note::
+
+  More algorithms (like QR-DQN or TQC) are implemented in our :ref:`contrib repo <sb3_contrib>`.
 
 .. note::
 

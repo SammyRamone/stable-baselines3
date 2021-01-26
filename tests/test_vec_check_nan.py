@@ -1,13 +1,15 @@
 import gym
-from gym import spaces
 import numpy as np
+import pytest
+from gym import spaces
 
 from stable_baselines3.common.vec_env import DummyVecEnv, VecCheckNan
 
 
 class NanAndInfEnv(gym.Env):
     """Custom Environment that raised NaNs and Infs"""
-    metadata = {'render.modes': ['human']}
+
+    metadata = {"render.modes": ["human"]}
 
     def __init__(self):
         super(NanAndInfEnv, self).__init__()
@@ -17,9 +19,9 @@ class NanAndInfEnv(gym.Env):
     @staticmethod
     def step(action):
         if np.all(np.array(action) > 0):
-            obs = float('NaN')
+            obs = float("NaN")
         elif np.all(np.array(action) < 0):
-            obs = float('inf')
+            obs = float("inf")
         else:
             obs = 0
         return [obs], 0.0, False, {}
@@ -28,7 +30,7 @@ class NanAndInfEnv(gym.Env):
     def reset():
         return [0.0]
 
-    def render(self, mode='human', close=False):
+    def render(self, mode="human", close=False):
         pass
 
 
@@ -40,33 +42,18 @@ def test_check_nan():
 
     env.step([[0]])
 
-    try:
-        env.step([[float('NaN')]])
-    except ValueError:
-        pass
-    else:
-        assert False
+    with pytest.raises(ValueError):
+        env.step([[float("NaN")]])
 
-    try:
-        env.step([[float('inf')]])
-    except ValueError:
-        pass
-    else:
-        assert False
+    with pytest.raises(ValueError):
+        env.step([[float("inf")]])
 
-    try:
+    with pytest.raises(ValueError):
         env.step([[-1]])
-    except ValueError:
-        pass
-    else:
-        assert False
 
-    try:
+    with pytest.raises(ValueError):
         env.step([[1]])
-    except ValueError:
-        pass
-    else:
-        assert False
-
 
     env.step(np.array([[0, 1], [0, 1]]))
+
+    env.reset()

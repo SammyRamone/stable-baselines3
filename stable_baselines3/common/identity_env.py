@@ -1,18 +1,14 @@
-from typing import List, Union, Optional
+from typing import Optional, Union
 
 import numpy as np
 from gym import Env, Space
-from gym.spaces import Discrete, MultiDiscrete, MultiBinary, Box
+from gym.spaces import Box, Discrete, MultiBinary, MultiDiscrete
 
-
-from stable_baselines3.common.type_aliases import GymStepReturn, GymObs
+from stable_baselines3.common.type_aliases import GymObs, GymStepReturn
 
 
 class IdentityEnv(Env):
-    def __init__(self,
-                 dim: Optional[int] = None,
-                 space: Optional[Space] = None,
-                 ep_length: int = 100):
+    def __init__(self, dim: Optional[int] = None, space: Optional[Space] = None, ep_length: int = 100):
         """
         Identity environment for testing purposes
 
@@ -55,21 +51,19 @@ class IdentityEnv(Env):
     def _get_reward(self, action: Union[int, np.ndarray]) -> float:
         return 1.0 if np.all(self.state == action) else 0.0
 
-    def render(self, mode: str = 'human') -> None:
+    def render(self, mode: str = "human") -> None:
         pass
 
 
 class IdentityEnvBox(IdentityEnv):
-    def __init__(self, low: float = -1.0,
-                 high: float = 1.0, eps: float = 0.05,
-                 ep_length: int = 100):
+    def __init__(self, low: float = -1.0, high: float = 1.0, eps: float = 0.05, ep_length: int = 100):
         """
         Identity environment for testing purposes
 
-        :param low: (float) the lower bound of the box dim
-        :param high: (float) the upper bound of the box dim
-        :param eps: (float) the epsilon bound for correct value
-        :param ep_length: (int) the length of each episode in timesteps
+        :param low: the lower bound of the box dim
+        :param high: the upper bound of the box dim
+        :param eps: the epsilon bound for correct value
+        :param ep_length: the length of each episode in timesteps
         """
         space = Box(low=low, high=high, shape=(1,), dtype=np.float32)
         super().__init__(ep_length=ep_length, space=space)
@@ -91,8 +85,8 @@ class IdentityEnvMultiDiscrete(IdentityEnv):
         """
         Identity environment for testing purposes
 
-        :param dim: (int) the size of the dimensions you want to learn
-        :param ep_length: (int) the length of each episode in timesteps
+        :param dim: the size of the dimensions you want to learn
+        :param ep_length: the length of each episode in timesteps
         """
         space = MultiDiscrete([dim, dim])
         super().__init__(ep_length=ep_length, space=space)
@@ -103,8 +97,8 @@ class IdentityEnvMultiBinary(IdentityEnv):
         """
         Identity environment for testing purposes
 
-        :param dim: (int) the size of the dimensions you want to learn
-        :param ep_length: (int) the length of each episode in timesteps
+        :param dim: the size of the dimensions you want to learn
+        :param ep_length: the length of each episode in timesteps
         """
         space = MultiBinary(dim)
         super().__init__(ep_length=ep_length, space=space)
@@ -114,20 +108,27 @@ class FakeImageEnv(Env):
     """
     Fake image environment for testing purposes, it mimics Atari games.
 
-    :param action_dim: (int) Number of discrete actions
-    :param screen_height: (int) Height of the image
-    :param screen_width: (int) Width of the image
-    :param n_channels: (int) Number of color channels
-    :param discrete: (bool)
+    :param action_dim: Number of discrete actions
+    :param screen_height: Height of the image
+    :param screen_width: Width of the image
+    :param n_channels: Number of color channels
+    :param discrete: Create discrete action space instead of continuous
+    :param channel_first: Put channels on first axis instead of last
     """
-    def __init__(self, action_dim: int = 6,
-                 screen_height: int = 84,
-                 screen_width: int = 84,
-                 n_channels: int = 1,
-                 discrete: bool = True):
 
-        self.observation_space = Box(low=0, high=255, shape=(screen_height, screen_width,
-                                                             n_channels), dtype=np.uint8)
+    def __init__(
+        self,
+        action_dim: int = 6,
+        screen_height: int = 84,
+        screen_width: int = 84,
+        n_channels: int = 1,
+        discrete: bool = True,
+        channel_first: bool = False,
+    ):
+        self.observation_shape = (screen_height, screen_width, n_channels)
+        if channel_first:
+            self.observation_shape = (n_channels, screen_height, screen_width)
+        self.observation_space = Box(low=0, high=255, shape=self.observation_shape, dtype=np.uint8)
         if discrete:
             self.action_space = Discrete(action_dim)
         else:
@@ -145,5 +146,5 @@ class FakeImageEnv(Env):
         done = self.current_step >= self.ep_length
         return self.observation_space.sample(), reward, done, {}
 
-    def render(self, mode: str = 'human') -> None:
+    def render(self, mode: str = "human") -> None:
         pass
